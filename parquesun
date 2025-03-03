@@ -1,5 +1,6 @@
 import random
 import os
+import time
 
 equipos = ["R", "B", "G", "Y"]
 turno = 0  # Inicia en 0, que corresponde a "R"
@@ -80,7 +81,7 @@ def narrar(tipo, *args):
     -Mostrar mensajes narrativos durante el juego.
     -Selecciona una frase aleatoria de un conjunto predefinido y la muestra en la consola.
     Args: tipo (Any): es la clave para acceder a los valores del diccionario historias
-          *args (Any): descripcion
+          *args (Any): reemplaza {} con el mensaje correspondiente
 
     Returns: Ninguno
     """
@@ -183,7 +184,7 @@ def manejar_carcel(equipo_actual):
     -Permite al jugador elegir cuál ficha sacar.
     -Coloca la ficha seleccionada en la casilla de salida correspondiente
     -Actualiza el estado del juego.
-    -erifica si la salida de la ficha provoca una captura o la formación de una barrera/bloqueo
+    -Verifica si la salida de la ficha provoca una captura o la formación de una barrera/bloqueo
     Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
 
     Returns: Ficha_sacada(str): Ficha sacada de la carcel
