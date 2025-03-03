@@ -1,7 +1,5 @@
-
 import random
 import os
-import time
 
 equipos = ["R", "B", "G", "Y"]
 turno = 0  # Inicia en 0, que corresponde a "R"
@@ -80,8 +78,8 @@ def limpiar():
 def narrar(tipo, *args):
     """Narrar actualizaciones del juego.
     -Mostrar mensajes narrativos durante el juego.
-    -Selecciona una frase aleatoria de un conjunto predefinido y la muestra en la consola. 
-    Args: tipo (Any): descripcion
+    -Selecciona una frase aleatoria de un conjunto predefinido y la muestra en la consola.
+    Args: tipo (Any): es la clave para acceder a los valores del diccionario historias
           *args (Any): descripcion
 
     Returns: Ninguno
@@ -97,7 +95,7 @@ def mostrar_tablero():
 
     Returns: Ninguno
     """
-   
+
     tablero_visual = [
         ["     ","     ","     ","     ","     ","     ","  0  "," |35| ","|34*| ","|33| ","  0 ","     ","     ","     ","     ","     ","     "],
         ["     ","     ","     ","     ","     ","     ","  0  "," |36| ","  -  "," |32| ","  0 ","     ","     ","     ","     ","     ","     "],
@@ -141,7 +139,7 @@ def describir_estado_del_juego(equipo_actual):
     -Muestra las fichas en la meta
     -Muestra las fichas en el tablero(casillas externas o internas)
     -Muestra las fichas en la carcel
-    Args: equipo_actual (Any): descripcion
+    Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
 
     Returns: Ninguno
     """
@@ -180,13 +178,13 @@ def describir_estado_del_juego(equipo_actual):
 
 def manejar_carcel(equipo_actual):
     """Actualización de la carcel.
-    -Gestiona la salida de las fichas desde la cárcel. 
+    -Gestiona la salida de las fichas desde la cárcel.
     -Verifica si el equipo actual tiene fichas en la cárcel
     -Permite al jugador elegir cuál ficha sacar.
     -Coloca la ficha seleccionada en la casilla de salida correspondiente
     -Actualiza el estado del juego.
     -erifica si la salida de la ficha provoca una captura o la formación de una barrera/bloqueo
-    Args: equipo_actual (Any): descripcion
+    Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
 
     Returns: Ficha_sacada(str): Ficha sacada de la carcel
     """
@@ -227,11 +225,11 @@ def verificar_y_actualizar_barreras(equipo, posicion):
     -Si se detecta una barrera/bloqueo, se registra en el diccionario barreras/bloqueos
     -Si la barrera/bloqueo se rompe, la función actualiza el estado de las barreras.
     Args: equipo_actual (Any): descripcion
-          ficha (Any): descripcion 
-          nueva_posicion (Any): descripcion
+          ficha (Any): hace referencia a la ficha que se esta llamando
+          nueva_posicion (Any): hace referencia la nueva posicion creada de la ficha
     Returns: capturas_realizadas (bool): True si se realizaron capturas, False si no.
     """
-    
+
     # Contar cuántas fichas del mismo equipo hay en esa posición
     fichas_en_posicion = sum(1 for ficha, pos in posiciones[equipo].items() if pos == posicion)
 
@@ -250,9 +248,9 @@ def verificar_y_realizar_capturas(equipo_actual, ficha, nueva_posicion):
     -Verifica si una ficha llega a una casilla ocupada por una ficha contraria.
     -Envia la ficha contraria de regreso a su cárcel.
     -Verifica si la casilla es segura o si hay una barrera/Bloqueo que impida la captura.
-    Args: equipo_actual (Any): descripcion
-          ficha (Any): descripcion 
-          nueva_posicion (Any): descripcion
+    Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
+          ficha (Any): hace referencia a la ficha que se esta llamando
+          nueva_posicion (Any): hace referencia la nueva posicion creada de la ficha
     Returns: capturas_realizadas (bool): True si se realizaron capturas, False si no.
     """
     # No se puede capturar en seguros
@@ -292,10 +290,10 @@ def mover_ficha(equipo_actual, ficha, pasos):
     -Verifica si la ficha entra en el pasillo final o si llega a la meta.
     -Actualiza la posición de la ficha en el diccionario posiciones
     -Llama a otras funciones para verificar capturas y barreras.
-    Args: equipo_actual (Any): descripcion
-          ficha (Any): descripcion 
-          pasos (Any): descripcion
-    Returns: Ninguna
+    Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
+          ficha (Any): hace referencia a la ficha que se esta llamando
+          pasos (Any): guarda la cantidad de pasos
+    Returns: Ninguno
     """
     posicion_actual = posiciones[equipo_actual][ficha]
     nueva_posicion = (posicion_actual + pasos) % 68
@@ -304,7 +302,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
 
     # Si la ficha está en la casilla de entrada al pasillo final o la pasa
     if equipo_actual == "R" and posicion_actual <= entradas_pasillo["R"] and nueva_posicion > entradas_pasillo["R"]:
-        # Calculo para entrar a casillas internas 
+        # Calculo para entrar a casillas internas
         pasos_restantes = nueva_posicion - entradas_pasillo["R"]
         if pasos_restantes <= 7:  # 7 casillas en el pasillo interno
             print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
@@ -314,11 +312,11 @@ def mover_ficha(equipo_actual, ficha, pasos):
                 del posiciones[equipo_actual][ficha]
                 fichas_en_tablero[equipo_actual] -= 1
                 narrar("meta", ficha, equipo_actual)
-                # Actualizar bloqueos 
+                # Actualizar bloqueos
                 verificar_y_actualizar_barreras(equipo_actual, posicion_actual)
                 return
             else:
-                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes
                 narrar("movimiento", ficha, pasos)
                 return
         else:
@@ -326,7 +324,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
             return
         if equipo_actual == "B" and posicion_actual <= entradas["B"] and nueva_posicion > entradas["B"]:
                 pasos_restantes = nueva_posicion - entradas["B"]
-        if pasos_restantes <= 7:  
+        if pasos_restantes <= 7:
             print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
             if pasos_restantes == 7:
                 print(f"¡La ficha {ficha} ha llegado a la meta!")
@@ -337,7 +335,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
                 verificar_barreras(equipo_actual, posicion_actual)
                 return
             else:
-                posiciones[equipo_actual][ficha] = 100 + pasos_restantes 
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes
                 narrar("movimiento", ficha, pasos)
                 return
         else:
@@ -345,7 +343,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
             return
         if equipo_actual == "Y" and posicion_actual <= entradas["Y"] and nueva_posicion > entradas["Y"]:
            pasos_restantes = nueva_posicion - entradas["Y"]
-        if pasos_restantes <= 7:  
+        if pasos_restantes <= 7:
             print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
             if pasos_restantes == 7:
                 print(f"¡La ficha {ficha} ha llegado a la meta!")
@@ -356,7 +354,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
                 verificar_barreras(equipo_actual, posicion_actual)
                 return
             else:
-                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes
                 narrar("movimiento", ficha, pasos)
                 return
         else:
@@ -364,7 +362,7 @@ def mover_ficha(equipo_actual, ficha, pasos):
             return
         if equipo_actual == "G" and posicion_actual <= entradas["G"] and nueva_posicion > entradas["G"]:
            pasos_restantes = nueva_posicion - entradas["G"]
-        if pasos_restantes <= 7:  
+        if pasos_restantes <= 7:
             print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
             if pasos_restantes == 7:
                 print(f"¡La ficha {ficha} ha llegado a la meta!")
@@ -375,13 +373,13 @@ def mover_ficha(equipo_actual, ficha, pasos):
                 verificar_barreras(equipo_actual, posicion_actual)
                 return
             else:
-                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes
                 narrar("movimiento", ficha, pasos)
                 return
         else:
             print(f"La ficha {ficha} se pasa de la meta. Se queda en su posición actual.")
-            return          
-    
+            return
+
     # Movimiento en casillas externas
     print(f"La ficha {ficha} se mueve de la casilla {posicion_actual} a la casilla {nueva_posicion}.")
 
@@ -404,8 +402,8 @@ def seleccionar_ficha_para_mover(equipo_actual, pasos):
     -Muestra una lista de las fichas disponibles en el tablero.
     -permite al jugador seleccionar qué ficha desea mover.
 
-    Args: equipo_actual (Any): descripcion
-          pasos (Any): descripcion
+    Args: equipo_actual (Any): hace referencia al equipo que se esta llamando
+          pasos (Any): guarda la cantidad de pasos
     Returns: Ninguno
     """
     fichas_disponibles = list(posiciones[equipo_actual].keys())
@@ -434,7 +432,7 @@ def lanzar_dados(equipo_actual):
     """Simulacion de lanzamiento de dados.
     -Permite al jugador ingresar los valores de los dados en el modoD
 
-    Args: equipo_actual (Any): descripcion
+    Args: equipo_actual (Any):hace referencia al equipo que se esta llamando
 
     Returns: Ninguno
     """
@@ -498,7 +496,7 @@ def lanzar_dados(equipo_actual):
 
 def verificar_ganador():
     """Verificación de ganador.
-    -Revisa si un equipo ha llevado todas sus fichas a la meta (4 fichas). 
+    -Revisa si un equipo ha llevado todas sus fichas a la meta (4 fichas).
     -Si encuentra un ganador, retorna el equipo correspondiente; de lo contrario, retorna None.
 
     Args: Ninguno
@@ -513,9 +511,9 @@ def verificar_ganador():
 def modoD():
     """Se ejecuta el Modo desarrollador.
     -Gestiona los turnos de los jugadores,
-    -llama a las funciones necesarias para lanzar los dados, mover las fichas y verificar si hay un ganador. 
-    -Muestra mensajes narrativos y actualiza la interfaz del juego, está diseñada para poder interactuar con el juego a profundidad  
- 
+    -llama a las funciones necesarias para lanzar los dados, mover las fichas y verificar si hay un ganador.
+    -Muestra mensajes narrativos y actualiza la interfaz del juego, está diseñada para poder interactuar con el juego a profundidad
+
     Args: Ninguno
 
     Returns: Ninguno
