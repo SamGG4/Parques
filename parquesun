@@ -1,0 +1,557 @@
+
+import random
+import os
+import time
+
+equipos = ["R", "B", "G", "Y"]
+turno = 0  # Inicia en 0, que corresponde a "R"
+carcel = {"R": ["R1", "R2", "R3", "R4"],
+          "B": ["B1", "B2", "B3", "B4"],
+          "G": ["G1", "G2", "G3", "G4"],
+          "Y": ["Y1", "Y2", "Y3", "Y4"]}
+
+# Diccionario para almacenar la posición de las fichas en el tablero
+posiciones = {
+    "R": {}, "B": {}, "G": {}, "Y": {}
+}
+
+nombres_equipos = {
+    "R": "Rojo",
+    "B": "Azul",
+    "G": "Verde",
+    "Y": "Amarillo"
+}
+
+historias = {
+    "salida": [
+        "La ficha {} sale de la cárcel."
+    ],
+    "movimiento": [
+        "{} avanza {} casillas.",
+    ],
+    "captura": [
+        "¡{} captura a {} y la envía de regreso a la cárcel!",
+    ],
+    "bloqueo": [
+        "Las fichas {} y {} crean un bloqueo en la posición {}."
+    ],
+    "seguro": [
+        "{} se posiciona en la casilla segura {}",
+    ],
+    "meta": [
+        "¡{} ha llegado a su meta!",
+    ]
+}
+
+fichas_en_tablero = {"R": 0, "B": 0, "G": 0, "Y": 0}
+pares_consecutivos = 0
+tablero = {
+        "externas": list(range(1,69)),
+        "internas": {"R": list(range(1,8)),"Y": list(range(1,8)),"G": list(range(1,8)),"B": list(range(1,8))},
+        "seguros_equipos": {"R": 39, "Y": 5, "G": 56, "B": 22}, #PERTENECEN a las salidas, estos son los valores que tomara cada equipo al salir.
+        "seguros_globales": [29, 34, 51, 46, 63, 68, 12, 17]
+}
+
+# Posiciones iniciales de salida para cada equipo
+casillas_salida = {"R": 39, "B": 22, "G": 56, "Y": 5}
+
+# Casillas de entrada a pasillo final para cada equipo
+entradas_pasillo = {"R": 68, "B": 17, "G": 51, "Y": 34}
+
+# Fichas que han llegado a la meta
+fichas_en_meta = {"R": 0, "B": 0, "G": 0, "Y": 0}
+
+# Bloqueos activos en el tablero
+barreras = {}  # {posición: equipo}
+
+def limpiar():
+    """Mostrar Tablero.
+    -limpia la pantalla de la consola para que el juego se vea más ordenado
+    -limpia después de cada movimiento
+    Args: Ninguno
+
+    Returns: Ninguno
+    """
+    if os.name == "posix":
+        os.system("clear")
+    elif os.name == "ce" or os.name == "nt" or os.name == "dos":
+        os.system("cls")
+
+def narrar(tipo, *args):
+    """Narrar actualizaciones del juego.
+    -Mostrar mensajes narrativos durante el juego.
+    -Selecciona una frase aleatoria de un conjunto predefinido y la muestra en la consola. 
+    Args: tipo (Any): descripcion
+          *args (Any): descripcion
+
+    Returns: Ninguno
+    """
+    historia = random.choice(historias[tipo])
+    print(historia.format(*args))
+
+def mostrar_tablero():
+    """Mostrar Tablero.
+    -presenta visualmente el tablero y las posiciones de las fichas.
+
+    Args: Ninguno
+
+    Returns: Ninguno
+    """
+   
+    tablero_visual = [
+        ["     ","     ","     ","     ","     ","     ","  0  "," |35| ","|34*| ","|33| ","  0 ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |36| ","  -  "," |32| ","  0 ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |37| ","  -  "," |31| ","  0 ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","  R1 ","  R2 ","     ","     ","  0  "," |38| ","  -  "," |30| ","  0 ","     ","     ","  B1 ","  B2 ","     ","     "],
+        ["     ","     ","  R3 ","  R4 ","     ","     ","  0  "," *39* ","  -  "," |29*| "," 0 ","     ","     ","  B3 ","  B4 ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |40| ","  -  "," |28| ","  0 ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |41| ","  -  "," |27| ","  0 ","     ","     ","     ","     ","     ","     "],
+        ["  0  ","  0  ","  0  ","  0  ","  0  ","  0  ","  0  "," |42| ","  -  "," |26| ","  0 ","  0  ","  0  ","  0  ","  0  ","  0  ","  0  "],
+        [" |50|","|49|","|48|","|47|","|46*|","|45|"," |44| "," |43| ","  -  ","    |25|"," |24| "," |23| ","*22*","|21| "," |20| ","|19|","|18|"],
+        [" |51*| ","  -  ","  -  ","  -  ","  -  ","  -  ","  -  ","  -  "," ### ","  -  "," -  ","  -  ","  -  ","  -  ","  -  ","  -  ","|17*|"],
+        [" |52|","|53|","|54|","|55|","*56* ","|57|","|58|"    ,"  |59| ","  -  "," |9| ","|10|","|11|","|12*|","|13| "," |14| "," |15| "," |16|"],
+        ["  0  ","  0  ","  0  ","  0  ","  0  ","  0  ","  0  "," |60| ","  -  "," |8| ","  0  ","  0  ","  0  ","  0  ","  0  ","  0  ","  0  "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |61| ","  -  "," |7| ","  0  ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |62| ","  -  "," |6| ","  0  ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","  G1 ","  G2 ","     ","     ","  0  "," |63*| ","  -  ","*5* ","  0  ","     ","     ","  Y1 ","  Y2 ","     ","     "],
+        ["     ","     ","  G3 ","  G4 ","     ","     ","  0  "," |64| ","  -  "," |4| ","  0  ","     ","     ","  Y3 ","  Y4 ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |65| ","  -  "," |3| ","  0  ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |66| ","  -  "," |2| ","  0  ","     ","     ","     ","     ","     ","     "],
+        ["     ","     ","     ","     ","     ","     ","  0  "," |67| "," |68*|","|1| ","  0  ","     ","     ","     ","     ","     ","     "]
+    ]
+
+    # Actualizar las fichas en el tablero visual
+    for equipo, fichas in posiciones.items():
+        for ficha, pos in fichas.items():
+            if pos > 100:  # Si está en el pasillo interno
+                continue  # No se muestra en el tablero visual
+            for fila in tablero_visual:
+                for i, celda in enumerate(fila):
+                    if celda.strip() == str(pos):
+                        fila[i] = f" {ficha} "
+
+    # Mostrar el tablero
+    for fila in tablero_visual:
+        print("".join(fila))
+    print("\n")
+
+def describir_estado_del_juego(equipo_actual):
+    """Resumen del estado de juego.
+    -Muestra las estadisticas del equipo correspondiente al turno.
+    -Muestra las fichas en la meta
+    -Muestra las fichas en el tablero(casillas externas o internas)
+    -Muestra las fichas en la carcel
+    Args: equipo_actual (Any): descripcion
+
+    Returns: Ninguno
+    """
+    print("========= ESTADO DEL JUEGO =========")
+    print(f"Turno del equipo {nombres_equipos[equipo_actual]}")
+    mostrar_tablero()
+
+    # Estado de la cárcel
+    print("Fichas en la cárcel:")
+    for equipo in equipos:
+        if carcel[equipo]:
+            print(f"  {nombres_equipos[equipo]}: {', '.join(carcel[equipo])}")
+        else:
+            print(f"  {nombres_equipos[equipo]}: Ninguna")
+
+    # Fichas en tablero
+    print("Fichas en el tablero:")
+    for equipo in equipos:
+        if posiciones[equipo]:
+            fichas_info = [f"{ficha} (casilla {pos})" for ficha, pos in posiciones[equipo].items()]
+            print(f"  {nombres_equipos[equipo]}: {', '.join(fichas_info)}")
+        else:
+            print(f"  {nombres_equipos[equipo]}: Ninguna")
+    # Bloqueos activos
+    if barreras:
+        print("Bloqueos activos:")
+        for posicion, equipo in barreras.items():
+            print(f"  Casilla {posicion}: Equipo {nombres_equipos[equipo]}")
+
+    # Progreso hacia la meta
+    print("Fichas en la meta:")
+    for equipo in equipos:
+        print(f"  {nombres_equipos[equipo]}: {fichas_en_meta[equipo]}/4")
+
+    print("==================================")
+
+def manejar_carcel(equipo_actual):
+    """Actualización de la carcel.
+    -Gestiona la salida de las fichas desde la cárcel. 
+    -Verifica si el equipo actual tiene fichas en la cárcel
+    -Permite al jugador elegir cuál ficha sacar.
+    -Coloca la ficha seleccionada en la casilla de salida correspondiente
+    -Actualiza el estado del juego.
+    -erifica si la salida de la ficha provoca una captura o la formación de una barrera/bloqueo
+    Args: equipo_actual (Any): descripcion
+
+    Returns: Ficha_sacada(str): Ficha sacada de la carcel
+    """
+    if not carcel[equipo_actual]:
+        print(f"El equipo {nombres_equipos[equipo_actual]} no tiene fichas en la cárcel.")
+        return None
+
+    print(f"Fichas en la cárcel del equipo {nombres_equipos[equipo_actual]}: {', '.join(carcel[equipo_actual])}")
+
+    if len(carcel[equipo_actual]) > 1:
+        ficha_elegida = int(input(f"Elige la ficha que quieres sacar de la cárcel (1-{len(carcel[equipo_actual])}): "))
+        ficha_elegida -= 1
+        if ficha_elegida < 0 or ficha_elegida >= len(carcel[equipo_actual]):
+            print("Selección inválida. No se sacó ninguna ficha.")
+            return None
+    else:
+        ficha_elegida = 0
+
+    ficha_sacada = carcel[equipo_actual].pop(ficha_elegida)
+    posiciones[equipo_actual][ficha_sacada] = casillas_salida[equipo_actual]
+    fichas_en_tablero[equipo_actual] += 1
+
+    narrar("salida", ficha_sacada)
+    mostrar_tablero()
+
+    # Verificar si hay capturas al salir
+    verificar_y_realizar_capturas(equipo_actual, ficha_sacada, casillas_salida[equipo_actual])
+
+    # Verificar si forma barrera al salir
+    verificar_y_actualizar_barreras(equipo_actual, casillas_salida[equipo_actual])
+
+    return ficha_sacada
+
+def verificar_y_actualizar_barreras(equipo, posicion):
+    """Actualizar informacion de barreras/bloqueos.
+    -Controla si dos fichas del mismo equipo están en la misma casilla.
+    -Forma una barrera/bloqueo.
+    -Si se detecta una barrera/bloqueo, se registra en el diccionario barreras/bloqueos
+    -Si la barrera/bloqueo se rompe, la función actualiza el estado de las barreras.
+    Args: equipo_actual (Any): descripcion
+          ficha (Any): descripcion 
+          nueva_posicion (Any): descripcion
+    Returns: capturas_realizadas (bool): True si se realizaron capturas, False si no.
+    """
+    
+    # Contar cuántas fichas del mismo equipo hay en esa posición
+    fichas_en_posicion = sum(1 for ficha, pos in posiciones[equipo].items() if pos == posicion)
+
+    if fichas_en_posicion >= 2:
+        # Se forma un bloqueo
+        barreras[posicion] = equipo
+        fichas_en_barrera = [ficha for ficha, pos in posiciones[equipo].items() if pos == posicion]
+        if len(fichas_en_barrera) >= 2:
+            narrar("bloqueo", fichas_en_barrera[0], fichas_en_barrera[1], posicion)
+    elif posicion in barreras and barreras[posicion] == equipo:
+        # Ya no hay suficientes fichas para mantener el bloqueo
+        del barreras[posicion]
+
+def verificar_y_realizar_capturas(equipo_actual, ficha, nueva_posicion):
+    """
+    -Verifica si una ficha llega a una casilla ocupada por una ficha contraria.
+    -Envia la ficha contraria de regreso a su cárcel.
+    -Verifica si la casilla es segura o si hay una barrera/Bloqueo que impida la captura.
+    Args: equipo_actual (Any): descripcion
+          ficha (Any): descripcion 
+          nueva_posicion (Any): descripcion
+    Returns: capturas_realizadas (bool): True si se realizaron capturas, False si no.
+    """
+    # No se puede capturar en seguros
+    if nueva_posicion in tablero["seguros_globales"] or nueva_posicion == casillas_salida[equipo_actual]:
+        narrar("seguro", ficha, nueva_posicion)
+        return False
+
+    capturas_realizadas = False
+
+    # Verificar cada equipo
+    for otro_equipo in equipos:
+        if otro_equipo != equipo_actual:
+            fichas_a_capturar = []
+
+            # Buscar fichas en la misma posición
+            for otra_ficha, otra_posicion in list(posiciones[otro_equipo].items()):
+                if otra_posicion == nueva_posicion:
+                    # Verificar si hay bloqueo
+                    if nueva_posicion in barreras and barreras[nueva_posicion] == otro_equipo:
+                        print(f"No puedes capturar las fichas de {otro_equipo} porque forman una barrera en la casilla {nueva_posicion}.")
+                    else:
+                        fichas_a_capturar.append(otra_ficha)
+
+            # Hacer capturas
+            for otra_ficha in fichas_a_capturar:
+                carcel[otro_equipo].append(otra_ficha)
+                del posiciones[otro_equipo][otra_ficha]
+                fichas_en_tablero[otro_equipo] -= 1
+                narrar("captura", ficha, otra_ficha)
+                capturas_realizadas = True
+
+    return capturas_realizadas
+
+def mover_ficha(equipo_actual, ficha, pasos):
+    """Actualiza la posición de una ficha en el tablero.
+    -Mover una ficha en el tablero según el número de pasos obtenidos al lanzar los dados
+    -Verifica si la ficha entra en el pasillo final o si llega a la meta.
+    -Actualiza la posición de la ficha en el diccionario posiciones
+    -Llama a otras funciones para verificar capturas y barreras.
+    Args: equipo_actual (Any): descripcion
+          ficha (Any): descripcion 
+          pasos (Any): descripcion
+    Returns: Ninguna
+    """
+    posicion_actual = posiciones[equipo_actual][ficha]
+    nueva_posicion = (posicion_actual + pasos) % 68
+    if nueva_posicion == 0:  # Para evitar la posición 0
+        nueva_posicion = 68
+
+    # Si la ficha está en la casilla de entrada al pasillo final o la pasa
+    if equipo_actual == "R" and posicion_actual <= entradas_pasillo["R"] and nueva_posicion > entradas_pasillo["R"]:
+        # Calculo para entrar a casillas internas 
+        pasos_restantes = nueva_posicion - entradas_pasillo["R"]
+        if pasos_restantes <= 7:  # 7 casillas en el pasillo interno
+            print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
+            if pasos_restantes == 7:  # Llego a la meta
+                print(f"¡La ficha {ficha} ha llegado a la meta!")
+                fichas_en_meta[equipo_actual] += 1
+                del posiciones[equipo_actual][ficha]
+                fichas_en_tablero[equipo_actual] -= 1
+                narrar("meta", ficha, equipo_actual)
+                # Actualizar bloqueos 
+                verificar_y_actualizar_barreras(equipo_actual, posicion_actual)
+                return
+            else:
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                narrar("movimiento", ficha, pasos)
+                return
+        else:
+            print(f"La ficha {ficha} se pasa de la meta. Se queda en su posición actual.")
+            return
+        if equipo_actual == "B" and posicion_actual <= entradas["B"] and nueva_posicion > entradas["B"]:
+                pasos_restantes = nueva_posicion - entradas["B"]
+        if pasos_restantes <= 7:  
+            print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
+            if pasos_restantes == 7:
+                print(f"¡La ficha {ficha} ha llegado a la meta!")
+                fichas_en_meta[equipo_actual] += 1
+                del posiciones[equipo_actual][ficha]
+                fichas_en_tablero[equipo_actual] -= 1
+                narrar("meta", ficha, equipo_actual)
+                verificar_barreras(equipo_actual, posicion_actual)
+                return
+            else:
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes 
+                narrar("movimiento", ficha, pasos)
+                return
+        else:
+            print(f"La ficha {ficha} se pasa de la meta. Se queda en su posición actual.")
+            return
+        if equipo_actual == "Y" and posicion_actual <= entradas["Y"] and nueva_posicion > entradas["Y"]:
+           pasos_restantes = nueva_posicion - entradas["Y"]
+        if pasos_restantes <= 7:  
+            print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
+            if pasos_restantes == 7:
+                print(f"¡La ficha {ficha} ha llegado a la meta!")
+                fichas_en_meta[equipo_actual] += 1
+                del posiciones[equipo_actual][ficha]
+                fichas_en_tablero[equipo_actual] -= 1
+                narrar("meta", ficha, equipo_actual)
+                verificar_barreras(equipo_actual, posicion_actual)
+                return
+            else:
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                narrar("movimiento", ficha, pasos)
+                return
+        else:
+            print(f"La ficha {ficha} se pasa de la meta. Se queda en su posición actual.")
+            return
+        if equipo_actual == "G" and posicion_actual <= entradas["G"] and nueva_posicion > entradas["G"]:
+           pasos_restantes = nueva_posicion - entradas["G"]
+        if pasos_restantes <= 7:  
+            print(f"La ficha {ficha} entra a su pasillo final en la posición interna {pasos_restantes}.")
+            if pasos_restantes == 7:
+                print(f"¡La ficha {ficha} ha llegado a la meta!")
+                fichas_en_meta[equipo_actual] += 1
+                del posiciones[equipo_actual][ficha]
+                fichas_en_tablero[equipo_actual] -= 1
+                narrar("meta", ficha, equipo_actual)
+                verificar_barreras(equipo_actual, posicion_actual)
+                return
+            else:
+                posiciones[equipo_actual][ficha] = 100 + pasos_restantes  
+                narrar("movimiento", ficha, pasos)
+                return
+        else:
+            print(f"La ficha {ficha} se pasa de la meta. Se queda en su posición actual.")
+            return          
+    
+    # Movimiento en casillas externas
+    print(f"La ficha {ficha} se mueve de la casilla {posicion_actual} a la casilla {nueva_posicion}.")
+
+    # Actualizar bloqueos en la posición anterior
+    verificar_y_actualizar_barreras(equipo_actual, posicion_actual)
+
+    # Registrar  movimiento
+    posiciones[equipo_actual][ficha] = nueva_posicion
+    narrar("movimiento", ficha, pasos)
+    mostrar_tablero()
+
+    # Verificar capturas en la nueva posición
+    verificar_y_realizar_capturas(equipo_actual, ficha, nueva_posicion)
+
+    # Actualizar bloqueos en la nueva posición
+    verificar_y_actualizar_barreras(equipo_actual, nueva_posicion)
+
+def seleccionar_ficha_para_mover(equipo_actual, pasos):
+    """Opciones de ficha para mover.
+    -Muestra una lista de las fichas disponibles en el tablero.
+    -permite al jugador seleccionar qué ficha desea mover.
+
+    Args: equipo_actual (Any): descripcion
+          pasos (Any): descripcion
+    Returns: Ninguno
+    """
+    fichas_disponibles = list(posiciones[equipo_actual].keys())
+    if not fichas_disponibles:
+        print(f"El equipo {nombres_equipos[equipo_actual]} no tiene fichas en el tablero para mover.")
+        return None
+
+    print(f"Fichas del equipo {nombres_equipos[equipo_actual]} en el tablero:")
+    for i, ficha in enumerate(fichas_disponibles, 1):
+        pos = posiciones[equipo_actual][ficha]
+        if pos > 100:  # Está en casillas internas
+            print(f"{i}. {ficha} (pasillo interno, posición {pos-100})")
+        else:
+            print(f"{i}. {ficha} (casilla {pos})")
+
+    ficha_elegida = int(input(f"Elige la ficha que quieres mover (1-{len(fichas_disponibles)}): "))
+    ficha_elegida -= 1
+
+    if ficha_elegida < 0 or ficha_elegida >= len(fichas_disponibles):
+        print("Selección inválida. No se movió ninguna ficha.")
+        return None
+
+    return fichas_disponibles[ficha_elegida]
+
+def lanzar_dados(equipo_actual):
+    """Simulacion de lanzamiento de dados.
+    -Permite al jugador ingresar los valores de los dados en el modoD
+
+    Args: equipo_actual (Any): descripcion
+
+    Returns: Ninguno
+    """
+    global turno, pares_consecutivos
+
+    print(f"============= TURNO DEL EQUIPO {nombres_equipos[equipo_actual]} =============")
+    describir_estado_del_juego(equipo_actual)
+
+    input("Presiona Enter para lanzar los dados...")
+
+    # Para modo desarrollador permitimos que el usuario ingrese los valores
+    dado1 = int(input("Ingresa el valor del primer dado (1-6): "))
+    dado2 = int(input("Ingresa el valor del segundo dado (1-6): "))
+
+    while dado1 < 1 or dado1 > 6 or dado2 < 1 or dado2 > 6:
+        print("Los valores de los dados deben estar entre 1 y 6. Intenta de nuevo.")
+        dado1 = int(input("Ingresa el valor del primer dado (1-6): "))
+        dado2 = int(input("Ingresa el valor del segundo dado (1-6): "))
+
+    print(f"Resultados de los dados: Dado 1 = {dado1}, Dado 2 = {dado2}")
+
+    if dado1 == dado2:
+        pares_consecutivos += 1
+        if pares_consecutivos == 3:
+            print("¡Has sacado tres pares consecutivos! Una ficha irá a la cárcel.")
+            ficha = seleccionar_ficha_para_mover(equipo_actual, 0)
+            if ficha:
+                carcel[equipo_actual].append(ficha)
+                pos_antigua = posiciones[equipo_actual][ficha]
+                del posiciones[equipo_actual][ficha]
+                fichas_en_tablero[equipo_actual] -= 1
+                print(f"La ficha {ficha} ha sido enviada a la cárcel.")
+                # Actualizar bloqueos si es necesario
+                verificar_y_actualizar_barreras(equipo_actual, pos_antigua)
+            pares_consecutivos = 0
+        else:
+            print(f"¡Has sacado un par! Puedes repetir turno. Pares consecutivos: {pares_consecutivos}")
+            turno -= 1
+
+    # Manejar sacar fichas con 5
+    fichas_sacadas = []
+    if dado1 == 5:
+        print("Primer dado es 5. Puedes sacar una ficha de la cárcel.")
+        ficha1 = manejar_carcel(equipo_actual)
+        if ficha1:
+            fichas_sacadas.append(ficha1)
+
+    if dado2 == 5:
+        print("Segundo dado es 5. Puedes sacar una ficha de la cárcel.")
+        ficha2 = manejar_carcel(equipo_actual)
+        if ficha2:
+            fichas_sacadas.append(ficha2)
+
+    # Mover fichas según la suma de los dados, si no se sacaron fichas con 5
+    suma_dados = dado1 + dado2
+    if suma_dados > 0 and fichas_en_tablero[equipo_actual] > 0 and not fichas_sacadas:
+        print(f"Puedes mover una ficha {suma_dados} casillas.")
+        ficha = seleccionar_ficha_para_mover(equipo_actual, suma_dados)
+        if ficha:
+            mover_ficha(equipo_actual, ficha, suma_dados)
+
+def verificar_ganador():
+    """Verificación de ganador.
+    -Revisa si un equipo ha llevado todas sus fichas a la meta (4 fichas). 
+    -Si encuentra un ganador, retorna el equipo correspondiente; de lo contrario, retorna None.
+
+    Args: Ninguno
+
+    Returns: Equipo ganador o None si no hay ganador
+    """
+    for equipo in equipos:
+        if fichas_en_meta[equipo] == 4:
+            return equipo
+    return None
+
+def modoD():
+    """Se ejecuta el Modo desarrollador.
+    -Gestiona los turnos de los jugadores,
+    -llama a las funciones necesarias para lanzar los dados, mover las fichas y verificar si hay un ganador. 
+    -Muestra mensajes narrativos y actualiza la interfaz del juego, está diseñada para poder interactuar con el juego a profundidad  
+ 
+    Args: Ninguno
+
+    Returns: Ninguno
+    """
+    global turno
+    ganador = None
+
+    print("=============== BIENVENIDO ===============")
+
+    # iniciar con todas las fichas en la cárcel
+
+    while not ganador:
+        equipo_actual = equipos[turno % len(equipos)]
+        lanzar_dados(equipo_actual)
+
+        ganador = verificar_ganador()
+        if ganador:
+            print(f"\n¡VICTORIA! El equipo {nombres_equipos[ganador]} gana")
+            print("Todas sus fichas han llegado a meta.")
+            break
+
+        turno += 1
+        input("Presiona Enter para continuar al siguiente turno.")
+        limpiar()
+
+    print("FIN DEL JUEGO")
+    print(f"El equipo {nombres_equipos[ganador]} gana.")
+
+if __name__ == "__main__":
+    limpiar()
+    print("Bienvenido al Parchís Narrativo")
+    print("1. Modo desarrollador")
+    print("2. Modo real")
+    opcion = int(input("Elige una opción: "))
+
+    if opcion == 1:
+        modoD()
+    else:
+        modoR()
