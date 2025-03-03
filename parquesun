@@ -1,6 +1,6 @@
 import random
 import os
-import time
+
 
 equipos = ["R", "B", "G", "Y"]
 turno = 0  # Inicia en 0, que corresponde a "R"
